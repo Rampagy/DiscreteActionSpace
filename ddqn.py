@@ -9,7 +9,7 @@ from keras.optimizers import Adam
 from keras.models import Sequential
 from keras import backend as K
 
-EPISODES = 1000
+EPISODES = 10000
 TEST = False # to evaluate a model
 LOAD = False # to load an existing model
 
@@ -28,15 +28,15 @@ class DoubleDQNAgent:
 
         # these is hyper parameters for the Double DQN
         self.discount_factor = 0.9
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.9995
+        self.epsilon_decay = 0.9998
         self.epsilon_min = 0.01
-        self.batch_size = 32
-        self.train_start = 35
+        self.batch_size = 16
+        self.train_start = 150
         # create replay memory using deque
         self.memory = deque(maxlen=750)
 
@@ -138,6 +138,7 @@ if __name__ == "__main__":
         done = False
         score = 0
         state = env.reset()
+        beenToLoc = [state]
 
         x = state%4
         y = int(np.floor(state/4))
@@ -154,9 +155,15 @@ if __name__ == "__main__":
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)
 
+            if next_state == 15 and done:
+                reward += 100
+
+            beenToLoc += [next_state]
             newx = next_state%4
             newy = int(np.floor(next_state/4))
             next_state = np.reshape([newx, newy], [1, state_size])
+
+
 
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
@@ -180,7 +187,7 @@ if __name__ == "__main__":
 
                 # if the mean of scores of last 10 episode is bigger than X
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) > 0.9:
+                if np.mean(scores[-min(10, len(scores)):]) >= 100:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
                     sys.exit()
 
