@@ -27,18 +27,18 @@ class DoubleDQNAgent:
         self.action_size = action_size
 
         # these is hyper parameters for the Double DQN
-        self.discount_factor = 0.99
-        self.learning_rate = 0.01
+        self.discount_factor = 0.9
+        self.learning_rate = 0.001
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.999
+        self.epsilon_decay = 0.9995
         self.epsilon_min = 0.01
-        self.batch_size = 16
-        self.train_start = 50
+        self.batch_size = 32
+        self.train_start = 35
         # create replay memory using deque
-        self.memory = deque(maxlen=500)
+        self.memory = deque(maxlen=750)
 
         # create main model and target model
         self.model = self._build_model()
@@ -53,6 +53,7 @@ class DoubleDQNAgent:
     def _build_model(self):
         model = Sequential()
         model.add(Dense(24, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        #model.add(Dense(24, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
@@ -126,7 +127,7 @@ if __name__ == "__main__":
     env = gym.make('FrozenLake-v0')
     # get size of state and action from environment
 
-    state_size = 1#env.observation_space.n
+    state_size = 2#env.observation_space.n
     action_size = env.action_space.n
 
     agent = DoubleDQNAgent(state_size, action_size)
@@ -136,9 +137,12 @@ if __name__ == "__main__":
     for e in range(EPISODES):
         done = False
         score = 0
-        dist = 0
         state = env.reset()
-        state = np.reshape(state, [1, state_size])
+
+        x = state%4
+        y = int(np.floor(state/4))
+        state = np.reshape([x, y], [1, state_size])
+
         if LOAD:
             agent.load_model("./FrozenLake_DoubleDQN.h5")
 
@@ -149,23 +153,10 @@ if __name__ == "__main__":
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)
-            next_state = np.reshape(next_state, [1, state_size])
 
-            prev_dist = dist
-            x1 = next_state%4 + 1
-            y1 = np.ceil(next_state/4)
-            x2 = 4
-            y2 = 4
-            dist = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-            # if an action gets you closer to the end add 0.05
-            if ((dist - prev_dist) < 0) and not done:
-                reward += 0.05
-            elif ((dist - prev_dist) >= 0) and not done:
-                reward += 0
-            elif done and next_state==15:
-                reward += 0.05
-            else:
-                reward += -1
+            newx = next_state%4
+            newy = int(np.floor(next_state/4))
+            next_state = np.reshape([newx, newy], [1, state_size])
 
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
@@ -189,7 +180,7 @@ if __name__ == "__main__":
 
                 # if the mean of scores of last 10 episode is bigger than X
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) > 1:
+                if np.mean(scores[-min(10, len(scores)):]) > 0.9:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
                     sys.exit()
 
