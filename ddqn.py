@@ -28,14 +28,14 @@ class DoubleDQNAgent:
 
         # these is hyper parameters for the Double DQN
         self.discount_factor = 0.9
-        self.learning_rate = 0.01
+        self.learning_rate = 0.02
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.9998
+        self.epsilon_decay = 0.9999
         self.epsilon_min = 0.01
-        self.batch_size = 16
+        self.batch_size = 32
         self.train_start = 150
         # create replay memory using deque
         self.memory = deque(maxlen=750)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     agent = DoubleDQNAgent(state_size, action_size)
 
-    scores, episodes = [], []
+    scores, episodes, filtered_scores = [], [], []
 
     for e in range(EPISODES):
         done = False
@@ -157,13 +157,13 @@ if __name__ == "__main__":
 
             if next_state == 15 and done:
                 reward += 100
+            elif next_state != 15 and done:
+                reward += -100
 
             beenToLoc += [next_state]
             newx = next_state%4
             newy = int(np.floor(next_state/4))
             next_state = np.reshape([newx, newy], [1, state_size])
-
-
 
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
@@ -178,16 +178,20 @@ if __name__ == "__main__":
                 # every episode update the target model to be same with model
                 agent.update_target_model()
 
+                if len(filtered_scores)!=0: # if list is not empty
+                    filtered_scores.append(0.995*filtered_scores[-1] + 0.005*score)
+                else: # if list is empty
+                    filtered_scores.append(0.995*-100 + 0.005*score)
                 scores.append(score)
                 episodes.append(e)
-                pylab.plot(episodes, scores, 'b')
+                pylab.plot(episodes, scores, 'b', episodes, filtered_scores, 'orange')
                 pylab.savefig("./FrozenLake_DoubleDQN.png")
                 print("episode: {:3}   score: {:8.6}   memory length: {:4}   epsilon {:.3}"
                             .format(e, score, len(agent.memory), agent.epsilon))
 
                 # if the mean of scores of last 10 episode is bigger than X
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) >= 100:
+                if np.mean(scores[-min(10, len(scores)):]) >= 99:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
                     sys.exit()
 
