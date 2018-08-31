@@ -30,8 +30,8 @@ class DoubleDQNAgent:
         self.action_size = action_size
 
         # these is hyper parameters for the Double DQN
-        self.discount_factor = 0.6
-        self.learning_rate = 0.01
+        self.discount_factor = 0.9
+        self.learning_rate = 0.001
         if TEST:
             self.epsilon = 0.0
         else:
@@ -55,8 +55,8 @@ class DoubleDQNAgent:
     # state is input and Q Value of each action is output of network
     def _build_model(self):
         model = Sequential()
-        model.add(Dense(16, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
-        #model.add(Dense(16, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(30, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(30, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
@@ -73,6 +73,10 @@ class DoubleDQNAgent:
         else:
             q_value = self.model.predict(state)
             return np.argmax(q_value[0])
+
+    def get_qvals(self, state):
+        q_value = self.model.predict(state)
+        return q_value[0]
 
     # save sample <s,a,r,s'> to the replay memory
     def replay_memory(self, state, action, reward, next_state, done):
@@ -106,7 +110,7 @@ class DoubleDQNAgent:
                 #target[action] = reward + self.discount_factor * np.amax(t)
                 a = np.argmax(self.model.predict(next_state)[0])
                 target[action] = reward + self.discount_factor * \
-                        (self.target_model.predict(next_state)[0][a])
+                        self.target_model.predict(next_state)[0][a]
 
 
             update_input[i] = state
@@ -155,10 +159,14 @@ if __name__ == "__main__":
             next_state, reward, done, info = env.step(action)
             next_state = np.reshape(next_state, [1, state_size])
 
+
             if done and next_state != 15:
-                reward = -100
-            if done and next_state == 15:
-                reward = 1000
+                reward = -1
+            elif done and next_state == 15:
+                reward = 1
+            elif state == next_state: # if it tried to go off the map
+                reward = -1
+
 
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
@@ -190,8 +198,8 @@ if __name__ == "__main__":
                 if np.mean(scores[-min(10, len(scores)):]) >= 999:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
-                    dirs = [agent.get_action([tile]) for tile in WALKABLE]
-                    dir_map.save_map(positions=WALKABLE, directions=dirs, \
+                    qvals = [agent.get_action([tile]) for tile in WALKABLE]
+                    dir_map.save_map(positions=WALKABLE, qvalues=qvals, \
                                     map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
                     sys.exit()
 
@@ -199,12 +207,12 @@ if __name__ == "__main__":
         if e % 100 == 0:
             agent.save_model("./FrozenLake_DoubleDQN.h5")
 
-            dirs = [agent.get_action([tile]) for tile in WALKABLE]
-            dir_map.save_map(positions=WALKABLE, directions=dirs, \
+            qvals = [agent.get_qvals([tile]) for tile in WALKABLE]
+            dir_map.save_map(positions=WALKABLE, qvalues=qvals, \
                             map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
 
     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
-    dirs = [agent.get_action([tile]) for tile in WALKABLE]
-    dir_map.save_map(positions=WALKABLE, directions=dirs, \
+    qvals = [agent.get_qvals([tile]) for tile in WALKABLE]
+    dir_map.save_map(positions=WALKABLE, qvalues=qvals, \
                     map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))

@@ -28,10 +28,13 @@ INDEX MAP
 
 
 # plot a direction map so you know what the best move is for each tile
-def save_map(positions, directions, map_dim, name):
-    strengths = []
+def save_map(positions, qvalues, map_dim, name):
+    directions = []
     arrows = []
     count = 0
+
+    for qval in qvalues:
+        directions += [np.argmax(qval)]
 
     # -1 for zero index
     x_dim = map_dim[1] # x == columns
@@ -69,6 +72,7 @@ def save_map(positions, directions, map_dim, name):
     plt.xlim(xmin=0, xmax=x_dim)
     plt.ylim(ymin=0, ymax=y_dim)
     plt.savefig('./tile_maps/' + name + '.png')
+    plt.close()
 
 '''
 if __name__ == '__main__':
