@@ -31,13 +31,13 @@ class DoubleDQNAgent:
 
         # these is hyper parameters for the Double DQN
         self.discount_factor = 0.9
-        self.learning_rate = 0.001
+        self.learning_rate = 0.01
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
         self.epsilon_decay = 0.9999
-        self.epsilon_min = 0.05
+        self.epsilon_min = 0.01
         self.batch_size = 32
         self.train_start = 300
         # create replay memory using deque
@@ -92,33 +92,37 @@ class DoubleDQNAgent:
         mini_batch = random.sample(self.memory, batch_size)
 
         update_input = np.zeros((batch_size, self.state_size))
-        update_target = np.zeros((batch_size, self.action_size))
+        update_target = np.zeros((batch_size, self.state_size))
+        action, reward, done = [], [], []
 
         for i in range(batch_size):
-            state, action, reward, next_state, done = mini_batch[i]
-            target = self.model.predict(state)[0]
+            update_input[i] = mini_batch[i][0]
+            action.append(mini_batch[i][1])
+            reward.append(mini_batch[i][2])
+            update_target[i] = mini_batch[i][3]
+            done.append(mini_batch[i][4])
 
+        target = self.model.predict(update_input)
+        target_next = self.model.predict(update_target)
+        target_val = self.target_model.predict(update_target)
+
+        for i in range(self.batch_size):
             # like Q Learning, get maximum Q value at s'
             # But from target model
-            if done:
-                target[action] = reward
+            if done[i]:
+                target[i][action[i]] = reward[i]
             else:
                 # the key point of Double DQN
                 # selection of action is from model
                 # update is from target model
-                #t = self.target_model.predict(next_state)[0]
-                #target[action] = reward + self.discount_factor * np.amax(t)
-                a = np.argmax(self.model.predict(next_state)[0])
-                target[action] = reward + self.discount_factor * \
-                        self.target_model.predict(next_state)[0][a]
-
-
-            update_input[i] = state
-            update_target[i] = target
+                a = np.argmax(target_next[i])
+                target[i][action[i]] = reward[i] + self.discount_factor * (
+                    target_val[i][a])
 
         # make minibatch which includes target q value and predicted q value
         # and do the model fit!
-        self.model.fit(update_input, update_target, batch_size=batch_size, epochs=1, verbose=0)
+        self.model.fit(update_input, target, batch_size=self.batch_size,
+                       epochs=1, verbose=0)
 
     # load the saved model
     def load_model(self, name):
@@ -195,7 +199,7 @@ if __name__ == "__main__":
 
                 # if the mean of scores of last 10 episode is bigger than X
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) >= 999:
+                if np.mean(scores[-min(10, len(scores)):]) >= 0.75:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
                     qvals = [agent.get_action([tile]) for tile in WALKABLE]
