@@ -155,6 +155,9 @@ if __name__ == "__main__":
             next_state, reward, done, info = env.step(action)
             next_state = np.reshape(next_state, [1, state_size])
 
+            if done and next_state != 15:
+                reward = -100
+
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
                 agent.replay_memory(state, action, reward, next_state, done)
