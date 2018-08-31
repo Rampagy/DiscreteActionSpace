@@ -157,6 +157,8 @@ if __name__ == "__main__":
 
             if done and next_state != 15:
                 reward = -100
+            if done and next_state == 15:
+                reward = 1000
 
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
@@ -185,8 +187,12 @@ if __name__ == "__main__":
 
                 # if the mean of scores of last 10 episode is bigger than X
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) >= 99:
+                if np.mean(scores[-min(10, len(scores)):]) >= 999:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
+
+                    dirs = [agent.get_action([tile]) for tile in WALKABLE]
+                    dir_map.save_map(positions=WALKABLE, directions=dirs, \
+                                    map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
                     sys.exit()
 
         # save the model every N episodes
