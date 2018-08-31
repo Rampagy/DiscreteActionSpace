@@ -7,18 +7,21 @@ from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
-from keras import backend as K
+import DirectionMap as dir_map
 
 EPISODES = 10000
 TEST = False # to evaluate a model
 LOAD = False # to load an existing model
-
+WALKABLE = [0, 1, 2, 3, 4, 6, 8, 9, 10, 13, 14, 15] # walkable map positions
 
 # this is Double DQN Agent
 # it uses Neural Network to approximate q function
 # and replay memory & target q network
 class DoubleDQNAgent:
     def __init__(self, state_size, action_size):
+        np.random.seed(seed=951753)
+        random.seed(6802)
+
         # if you want to see learning, then change to True
         self.render = False
 
@@ -27,16 +30,16 @@ class DoubleDQNAgent:
         self.action_size = action_size
 
         # these is hyper parameters for the Double DQN
-        self.discount_factor = 0.9
-        self.learning_rate = 0.02
+        self.discount_factor = 0.6
+        self.learning_rate = 0.01
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
         self.epsilon_decay = 0.9999
-        self.epsilon_min = 0.01
+        self.epsilon_min = 0.05
         self.batch_size = 32
-        self.train_start = 150
+        self.train_start = 300
         # create replay memory using deque
         self.memory = deque(maxlen=750)
 
@@ -52,8 +55,8 @@ class DoubleDQNAgent:
     # state is input and Q Value of each action is output of network
     def _build_model(self):
         model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
-        #model.add(Dense(24, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(16, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        #model.add(Dense(16, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
@@ -66,7 +69,7 @@ class DoubleDQNAgent:
     # get action from model using epsilon-greedy policy
     def get_action(self, state):
         if np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
+            return np.random.randint(self.action_size)
         else:
             q_value = self.model.predict(state)
             return np.argmax(q_value[0])
@@ -127,7 +130,7 @@ if __name__ == "__main__":
     env = gym.make('FrozenLake-v0')
     # get size of state and action from environment
 
-    state_size = 2#env.observation_space.n
+    state_size = 1#env.observation_space.n
     action_size = env.action_space.n
 
     agent = DoubleDQNAgent(state_size, action_size)
@@ -138,11 +141,7 @@ if __name__ == "__main__":
         done = False
         score = 0
         state = env.reset()
-        beenToLoc = [state]
-
-        x = state%4
-        y = int(np.floor(state/4))
-        state = np.reshape([x, y], [1, state_size])
+        state = np.reshape(state, [1, state_size])
 
         if LOAD:
             agent.load_model("./FrozenLake_DoubleDQN.h5")
@@ -154,16 +153,7 @@ if __name__ == "__main__":
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)
-
-            if next_state == 15 and done:
-                reward += 100
-            elif next_state != 15 and done:
-                reward += -100
-
-            beenToLoc += [next_state]
-            newx = next_state%4
-            newy = int(np.floor(next_state/4))
-            next_state = np.reshape([newx, newy], [1, state_size])
+            next_state = np.reshape(next_state, [1, state_size])
 
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
@@ -179,11 +169,12 @@ if __name__ == "__main__":
                 agent.update_target_model()
 
                 if len(filtered_scores)!=0: # if list is not empty
-                    filtered_scores.append(0.995*filtered_scores[-1] + 0.005*score)
+                    filtered_scores.append(0.98*filtered_scores[-1] + 0.02*score)
                 else: # if list is empty
-                    filtered_scores.append(0.995*-100 + 0.005*score)
+                    filtered_scores.append(score)
                 scores.append(score)
                 episodes.append(e)
+                pylab.gcf().clear()
                 pylab.plot(episodes, scores, 'b', episodes, filtered_scores, 'orange')
                 pylab.savefig("./FrozenLake_DoubleDQN.png")
                 print("episode: {:3}   score: {:8.6}   memory length: {:4}   epsilon {:.3}"
@@ -196,5 +187,15 @@ if __name__ == "__main__":
                     sys.exit()
 
         # save the model every N episodes
-        if e % 10 == 0:
+        if e % 100 == 0:
             agent.save_model("./FrozenLake_DoubleDQN.h5")
+
+            dirs = [agent.get_action([tile]) for tile in WALKABLE]
+            dir_map.save_map(positions=WALKABLE, directions=dirs, \
+                            map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
+
+    agent.save_model("./FrozenLake_DoubleDQN.h5")
+
+    dirs = [agent.get_action([tile]) for tile in WALKABLE]
+    dir_map.save_map(positions=WALKABLE, directions=dirs, \
+                    map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
