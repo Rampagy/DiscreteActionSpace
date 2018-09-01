@@ -11,7 +11,7 @@ import DirectionMap as dir_map
 from gym.envs.registration import register
 
 
-EPISODES = 5000
+EPISODES = 10000
 TEST = False # to evaluate a model
 LOAD = False # to load an existing model
 WALKABLE = [0, 1, 2, 3, 4, 6, 8, 9, 10, 13, 14, 15] # walkable map positions
@@ -32,7 +32,7 @@ class DoubleDQNAgent:
         self.action_size = action_size
 
         # these is hyper parameters for the Double DQN
-        self.discount_factor = 0.01
+        self.discount_factor = 0.9
         self.learning_rate = 0.001
         if TEST:
             self.epsilon = 0.0
@@ -43,7 +43,7 @@ class DoubleDQNAgent:
         self.batch_size = 32
         self.train_start = 100
         # create replay memory using deque
-        self.memory = deque(maxlen=250)
+        self.memory = deque(maxlen=750)
 
         # create main model and target model
         self.model = self._build_model()
@@ -57,10 +57,9 @@ class DoubleDQNAgent:
     # state is input and Q Value of each action is output of network
     def _build_model(self):
         model = Sequential()
-        model.add(Dense(30, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
-        model.add(Dense(30, activation='relu', kernel_initializer='he_uniform'))
-        model.add(Dense(30, activation='relu', kernel_initializer='he_uniform'))
-        model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
+        model.add(Dense(30, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_uniform'))
+        model.add(Dense(30, activation='relu', kernel_initializer='glorot_uniform'))
+        model.add(Dense(self.action_size, activation='linear', kernel_initializer='glorot_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         return model
@@ -175,12 +174,12 @@ if __name__ == "__main__":
             next_state = np.reshape(next_state, [1, state_size])
 
 
-            if done and next_state != 15:
-                reward = -1
-            elif done and next_state == 15:
-                reward = 1
-            elif state == next_state: # if it tried to go off the map
-                reward = -1
+            #if done and next_state != 15:
+                #reward = -100
+            #if done and next_state == 15:
+                #reward = 1
+            #elif state == next_state: # if it tried to go off the map
+                #reward = -0.1
 
 
             if not TEST:
@@ -210,7 +209,7 @@ if __name__ == "__main__":
 
                 # if the mean of scores of last 10 episode is bigger than X
                 # stop training
-                if np.mean(scores[-min(10, len(scores)):]) >= 0.75:
+                if np.mean(scores[-min(15, len(scores)):]) >= 0.95:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
                     qvals = [agent.get_action([tile]) for tile in WALKABLE]

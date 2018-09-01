@@ -74,13 +74,12 @@ def save_map(positions, qvalues, map_dim, name):
     plt.savefig('./tile_maps/' + name + '.png')
     plt.close()
 
-'''
+
 if __name__ == '__main__':
     vals = []
     walkable = [0, 1, 2, 3, 4, 6, 8, 9, 10, 13, 14, 15]
 
     for i in walkable:
-        vals += [np.random.rand(4)]
+        vals += [[0, 0, 0, 1]]
 
     save_map(positions=walkable, qvalues=vals, map_dim=(4, 4), name='DQN10')
-'''
