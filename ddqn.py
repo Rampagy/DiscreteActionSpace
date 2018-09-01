@@ -8,8 +8,10 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import Sequential
 import DirectionMap as dir_map
+from gym.envs.registration import register
 
-EPISODES = 10000
+
+EPISODES = 5000
 TEST = False # to evaluate a model
 LOAD = False # to load an existing model
 WALKABLE = [0, 1, 2, 3, 4, 6, 8, 9, 10, 13, 14, 15] # walkable map positions
@@ -30,8 +32,8 @@ class DoubleDQNAgent:
         self.action_size = action_size
 
         # these is hyper parameters for the Double DQN
-        self.discount_factor = 0.9
-        self.learning_rate = 0.01
+        self.discount_factor = 0.01
+        self.learning_rate = 0.001
         if TEST:
             self.epsilon = 0.0
         else:
@@ -39,9 +41,9 @@ class DoubleDQNAgent:
         self.epsilon_decay = 0.9999
         self.epsilon_min = 0.01
         self.batch_size = 32
-        self.train_start = 300
+        self.train_start = 100
         # create replay memory using deque
-        self.memory = deque(maxlen=750)
+        self.memory = deque(maxlen=250)
 
         # create main model and target model
         self.model = self._build_model()
@@ -56,6 +58,7 @@ class DoubleDQNAgent:
     def _build_model(self):
         model = Sequential()
         model.add(Dense(30, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform'))
+        model.add(Dense(30, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(30, activation='relu', kernel_initializer='he_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='he_uniform'))
         model.summary()
@@ -134,8 +137,16 @@ class DoubleDQNAgent:
 
 
 if __name__ == "__main__":
-    # in case of CartPole-v1, you can play until 500 time step
-    env = gym.make('FrozenLake-v0')
+    # register new env that is not slippery
+    register(
+        id='FrozenLakeNotSlippery-v0',
+        entry_point='gym.envs.toy_text:FrozenLakeEnv',
+        kwargs={'map_name' : '4x4', 'is_slippery': False},
+        max_episode_steps=100,
+        reward_threshold=0.78, # optimum = .8196
+    )
+
+    env = gym.make('FrozenLakeNotSlippery-v0')
     # get size of state and action from environment
 
     state_size = 1#env.observation_space.n
