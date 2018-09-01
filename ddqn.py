@@ -9,21 +9,20 @@ from keras.optimizers import Adam
 from keras.models import Sequential
 import DirectionMap as dir_map
 from gym.envs.registration import register
+import time
 
 
 EPISODES = 10000
 TEST = False # to evaluate a model
 LOAD = False # to load an existing model
-WALKABLE = [0, 1, 2, 3, 4, 6, 8, 9, 10, 13, 14, 15] # walkable map positions
+WALKABLE = np.arange(0, 16) # map positions
+print(WALKABLE.shape)
 
 # this is Double DQN Agent
 # it uses Neural Network to approximate q function
 # and replay memory & target q network
 class DoubleDQNAgent:
     def __init__(self, state_size, action_size):
-        np.random.seed(seed=951753)
-        random.seed(6802)
-
         # if you want to see learning, then change to True
         self.render = False
 
@@ -38,9 +37,9 @@ class DoubleDQNAgent:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.9999
+        self.epsilon_decay = 0.9996
         self.epsilon_min = 0.01
-        self.batch_size = 32
+        self.batch_size = 64
         self.train_start = 100
         # create replay memory using deque
         self.memory = deque(maxlen=750)
@@ -78,7 +77,7 @@ class DoubleDQNAgent:
 
     def get_qvals(self, state):
         q_value = self.model.predict(state)
-        return q_value[0]
+        return q_value
 
     # save sample <s,a,r,s'> to the replay memory
     def replay_memory(self, state, action, reward, next_state, done):
@@ -173,13 +172,8 @@ if __name__ == "__main__":
             next_state, reward, done, info = env.step(action)
             next_state = np.reshape(next_state, [1, state_size])
 
-
-            #if done and next_state != 15:
-                #reward = -100
-            #if done and next_state == 15:
-                #reward = 1
-            #elif state == next_state: # if it tried to go off the map
-                #reward = -0.1
+            if state == next_state: # if it tried to go off the map
+                reward += -0.1
 
 
             if not TEST:
@@ -207,26 +201,27 @@ if __name__ == "__main__":
                 print("episode: {:3}   score: {:8.6}   memory length: {:4}   epsilon {:.3}"
                             .format(e, score, len(agent.memory), agent.epsilon))
 
-                # if the mean of scores of last 10 episode is bigger than X
+                # if the mean of scores of last N episodes is bigger than X
                 # stop training
-                if np.mean(scores[-min(15, len(scores)):]) >= 0.95:
+                if np.mean(scores[-min(25, len(scores)):]) >= 0.99:
                     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
-                    qvals = [agent.get_action([tile]) for tile in WALKABLE]
+                    qvals = agent.get_qvals(WALKABLE)
                     dir_map.save_map(positions=WALKABLE, qvalues=qvals, \
                                     map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
+                    time.sleep(1)   # Delays for 5 seconds. You can also use a float value.
                     sys.exit()
 
         # save the model every N episodes
         if e % 100 == 0:
             agent.save_model("./FrozenLake_DoubleDQN.h5")
 
-            qvals = [agent.get_qvals([tile]) for tile in WALKABLE]
+            qvals = agent.get_qvals(WALKABLE)
             dir_map.save_map(positions=WALKABLE, qvalues=qvals, \
                             map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
 
     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
-    qvals = [agent.get_qvals([tile]) for tile in WALKABLE]
+    qvals = agent.get_qvals(WALKABLE)
     dir_map.save_map(positions=WALKABLE, qvalues=qvals, \
                     map_dim=(4, 4), name='FrozenLake_DoubleDQN_' + str(e))
