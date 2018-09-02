@@ -51,14 +51,14 @@ class DoubleDQNAgent:
 
         # these is hyper parameters for the Double DQN
         self.discount_factor = 0.9
-        self.learning_rate = 0.0001
+        self.learning_rate = 0.001
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.999992
+        self.epsilon_decay = 0.9999
         self.epsilon_min = 0.01
-        self.batch_size = 3
+        self.batch_size = 64
         self.train_start = 500
         # create replay memory using deque
         self.memory = deque(maxlen=2000)
