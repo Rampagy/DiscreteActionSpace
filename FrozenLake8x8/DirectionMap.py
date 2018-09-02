@@ -65,7 +65,6 @@ def save_map(positions, qvalues, map_dim, name):
     fig, ax = plt.subplots()
     for x, y, dx, dy in arrows:
         ax.arrow(x, y, dx, dy, fc='k', ec='k', head_width=0.05, head_length=0.1, length_includes_head=True)
-        #ax.text(x+OFFSET, y+OFFSET, str(strength))
 
     spacing = 1
     majorLocator = plticker.MultipleLocator(spacing)
