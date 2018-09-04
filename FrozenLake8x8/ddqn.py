@@ -75,11 +75,18 @@ class DoubleDQNAgent:
     # state is input and Q Value of each action is output of network
     def _build_model(self):
         model = Sequential()
-        #model.add(Dense(45, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_uniform'))
-        model.add(Conv2D(filters=16, kernel_size=(2, 2), strides=(1, 1), activation='relu', input_shape=self.state_size, kernel_initializer='glorot_uniform'))
+
+        # input size: [batch_size, 8, 8, 1]
+        # output size: [batch_size, 8, 8, 16]
+        model.add(Conv2D(filters=16, kernel_size=(2, 2), strides=(1, 1), activation='relu', padding='same', input_shape=self.state_size, kernel_initializer='glorot_uniform'))
+
+        # input size: [batch_size, 8, 8, 16]
+        # output size: [batch_size, 8, 8, 32]
         model.add(Conv2D(filters=32, kernel_size=(2, 2), strides=(1, 1), activation='relu', padding='same', kernel_initializer='glorot_uniform'))
-        model.add(Reshape(target_shape=(1, 1568)))
-        #model.add(Dense(52, activation='relu', kernel_initializer='glorot_uniform'))
+
+        # input size: [batch_size, 8, 8, 32]
+        # output size: batch_sizex8x8x32 = 2048xbatch_size
+        model.add(Reshape(target_shape=(1, 2048)))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='glorot_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
