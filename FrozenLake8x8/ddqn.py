@@ -56,7 +56,7 @@ class DoubleDQNAgent:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.9999
+        self.epsilon_decay = 0.9995
         self.epsilon_min = 0.01
         self.batch_size = 64
         self.train_start = 500
@@ -76,7 +76,7 @@ class DoubleDQNAgent:
     def _build_model(self):
         model = Sequential()
         #model.add(Dense(45, input_dim=self.state_size, activation='relu', kernel_initializer='glorot_uniform'))
-        model.add(Conv2D(filters=16, kernel_size=(2, 2), strides=(1, 1), activation='relu', input_shape=(8, 8, 1), kernel_initializer='glorot_uniform'))
+        model.add(Conv2D(filters=16, kernel_size=(2, 2), strides=(1, 1), activation='relu', input_shape=self.state_size, kernel_initializer='glorot_uniform'))
         model.add(Conv2D(filters=32, kernel_size=(2, 2), strides=(1, 1), activation='relu', padding='same', kernel_initializer='glorot_uniform'))
         model.add(Reshape(target_shape=(1, 1568)))
         #model.add(Dense(52, activation='relu', kernel_initializer='glorot_uniform'))
@@ -180,10 +180,10 @@ if __name__ == "__main__":
         done = False
         score = 0
         state = env.reset()
-        row, col = state%8, int(np.floor(state/8))
+        row, col = state%state_size[0], int(np.floor(state/state_size[1]))
         state = MAP.copy()
         state[row, col] = 10.0
-        state = np.reshape(state, newshape=(1, 8, 8, 1))
+        state = np.reshape(state, newshape=(1, state_size[0], state_size[1], state_size[2]))
 
         if LOAD:
             agent.load_model("./FrozenLake_DoubleDQN.h5")
@@ -196,10 +196,10 @@ if __name__ == "__main__":
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)
 
-            next_row, next_col = next_state%8, int(np.floor(next_state/8))
+            next_row, next_col = next_state%state_size[0], int(np.floor(next_state/state_size[0]))
             next_state = MAP.copy()
             next_state[next_row, next_col] = 10.0
-            next_state = np.reshape(next_state, newshape=(1, 8, 8, 1))
+            next_state = np.reshape(next_state, newshape=(1, state_size[0], state_size[1], state_size[2]))
 
             if np.array_equal(state, next_state): # if it tried to go off the map
                 reward += -0.1
@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
                     qvals = agent.get_qvals(WALKABLE)
                     dir_map.save_map(positions=MAP_IDS, qvalues=qvals, \
-                                    map_dim=(8, 8), name='FrozenLake_DoubleDQN_' + str(e))
+                                    map_dim=(state_size[0], state_size[1]), name='FrozenLake_DoubleDQN_' + str(e))
                     time.sleep(1)   # Delays for 1 second
                     sys.exit()
 
@@ -246,10 +246,10 @@ if __name__ == "__main__":
 
             qvals = agent.get_qvals(WALKABLE)
             dir_map.save_map(positions=MAP_IDS, qvalues=qvals, \
-                            map_dim=(8, 8), name='FrozenLake_DoubleDQN_' + str(e))
+                            map_dim=(state_size[0], state_size[1]), name='FrozenLake_DoubleDQN_' + str(e))
 
     agent.save_model("./FrozenLake_DoubleDQN.h5")
 
     qvals = agent.get_qvals(WALKABLE)
     dir_map.save_map(positions=MAP_IDS, qvalues=qvals, \
-                    map_dim=(8, 8), name='FrozenLake_DoubleDQN_' + str(e))
+                    map_dim=(state_size[0], state_size[1]), name='FrozenLake_DoubleDQN_' + str(e))
