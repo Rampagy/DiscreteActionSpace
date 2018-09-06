@@ -8,8 +8,6 @@ UNIT = 50  # pixels
 HEIGHT = 10  # grid height
 WIDTH = 10  # grid width
 
-np.random.seed(1)
-
 
 class Env(tk.Tk):
     def __init__(self):
@@ -24,11 +22,11 @@ class Env(tk.Tk):
         self.rewards = []
         self.goal = []
         # obstacle
-        self.set_reward([0, 1], -1)
-        self.set_reward([1, 2], -1)
-        self.set_reward([2, 3], -1)
-        # #goal
-        self.set_reward([4, 4], 1)
+        for i in range(1, HEIGHT-1):
+            self.set_reward([np.random.randint(WIDTH), i], -1)
+
+        # goal
+        self.set_reward([HEIGHT-1, WIDTH-1], 1)
 
     def _build_canvas(self):
         canvas = tk.Canvas(self, bg='white',
@@ -70,12 +68,11 @@ class Env(tk.Tk):
 
         self.rewards.clear()
         self.goal.clear()
-        self.set_reward([0, 1], -1)
-        self.set_reward([1, 2], -1)
-        self.set_reward([2, 3], -1)
+        for i in range(1, HEIGHT-1):
+            self.set_reward([np.random.randint(WIDTH), i], -1)
 
         # goal
-        self.set_reward([4, 4], 1)
+        self.set_reward([HEIGHT-1, WIDTH-1], 1)
 
     def set_reward(self, state, reward):
         state = [int(state[0]), int(state[1])]
@@ -92,7 +89,7 @@ class Env(tk.Tk):
 
 
         elif reward < 0:
-            temp['direction'] = -1
+            temp['direction'] = np.random.choice([-1, 1])
             temp['reward'] = reward
             temp['figure'] = self.canvas.create_image((UNIT * x) + UNIT / 2,
                                                       (UNIT * y) + UNIT / 2,
@@ -136,9 +133,7 @@ class Env(tk.Tk):
     def step(self, action):
         self.counter += 1
         self.render()
-
-        if self.counter % 2 == 1:
-            self.rewards = self.move_rewards()
+        self.rewards = self.move_rewards()
 
         next_coords = self.move(self.rectangle, action)
         check = self.check_if_reward(self.coords_to_state(next_coords))
@@ -157,16 +152,30 @@ class Env(tk.Tk):
         agent_y = location[1]
 
         state_map = np.zeros((HEIGHT, WIDTH))
-        state_map[agent_y, agent_x] = 255 # agent is value of 255
 
         for reward in self.rewards:
             reward_location = reward['state']
             if reward['reward'] < 0:
                 value = -1
+                if reward['direction'] == 1: # going left
+                    old_x = reward_location[0] + 1
+                    old_y = reward_location[1]
+                else: # going right
+                    old_x = reward_location[0] - 1
+                    old_y = reward_location[1]
+
+                if old_x >= HEIGHT: # going off of the map
+                    old_x = reward_location[0] - 1 # draw on other side of reward
+                elif old_x < 0: # going off of the map
+                    old_x = reward_location[0] + 1 # draw on other side of reward
+
+                # draw the previous location so that direction can be determined
+                state_map[old_y, old_x] = -1*value
             else:
-                value = 1
+                value = 10
 
             state_map[reward_location[1], reward_location[0]] = value
+            state_map[agent_y, agent_x] = 255 # agent is value of 255
 
         return state_map
 
@@ -232,5 +241,5 @@ class Env(tk.Tk):
         return s_
 
     def render(self):
-        time.sleep(0.02)
+        #time.sleep(0.02)
         self.update()

@@ -29,12 +29,12 @@ class DoubleDQNAgent:
 
         # these is hyper parameters for the Double DQN
         self.discount_factor = 0.9
-        self.learning_rate = 0.001
+        self.learning_rate = 0.0001
         if TEST:
             self.epsilon = 0.0
         else:
             self.epsilon = 1.0
-        self.epsilon_decay = 0.9999
+        self.epsilon_decay = 0.99997
         self.epsilon_min = 0.01
         self.batch_size = 64
         self.train_start = 500
@@ -173,9 +173,6 @@ if __name__ == "__main__":
             next_state, reward, done = env.step(action)
             next_state = np.reshape(next_state, (1, state_size[0], state_size[1], state_size[2]))
 
-            if np.array_equal(state, next_state): # if it tried to go off the map
-                reward += -0.1
-
             if not TEST:
                 # save the sample <s, a, r, s'> to the replay memory
                 agent.replay_memory(state, action, reward, next_state, done)
@@ -203,7 +200,7 @@ if __name__ == "__main__":
 
                 # if the mean of scores of last N episodes is bigger than X
                 # stop training
-                if np.mean(scores[-min(25, len(scores)):]) >= 0.99:
+                if np.mean(scores[-min(25, len(scores)):]) >= 0.93:
                     agent.save_model("./GridWorld_DoubleDQN.h5")
                     time.sleep(1)   # Delays for 1 second
                     sys.exit()
