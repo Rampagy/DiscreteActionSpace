@@ -132,7 +132,6 @@ class Env(tk.Tk):
 
     def step(self, action):
         self.counter += 1
-        self.render()
         self.rewards = self.move_rewards()
 
         next_coords = self.move(self.rectangle, action)
@@ -143,6 +142,7 @@ class Env(tk.Tk):
         self.canvas.tag_raise(self.rectangle)
 
         s_ = self.get_state()
+        self.render()
 
         return s_, reward, done
 
