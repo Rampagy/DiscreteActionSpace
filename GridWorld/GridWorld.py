@@ -128,10 +128,12 @@ class Env(tk.Tk):
         self.canvas.move(self.rectangle, UNIT / 2 - x, UNIT / 2 - y)
         # return observation
         self.reset_reward()
+        self.update()
         return self.get_state()
 
     def step(self, action):
         self.counter += 1
+        
         self.rewards = self.move_rewards()
 
         next_coords = self.move(self.rectangle, action)
@@ -143,7 +145,6 @@ class Env(tk.Tk):
 
         s_ = self.get_state()
         self.render()
-
         return s_, reward, done
 
     def get_state(self):
@@ -241,5 +242,5 @@ class Env(tk.Tk):
         return s_
 
     def render(self):
-        #time.sleep(0.02)
+        time.sleep(0.07)
         self.update()
