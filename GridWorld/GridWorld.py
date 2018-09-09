@@ -4,7 +4,7 @@ import tkinter as tk
 from PIL import ImageTk, Image
 
 PhotoImage = ImageTk.PhotoImage
-UNIT = 50  # pixels
+UNIT = 75  # pixels
 HEIGHT = 10  # grid height
 WIDTH = 10  # grid width
 
@@ -26,7 +26,7 @@ class Env(tk.Tk):
             self.set_reward([np.random.randint(WIDTH), i], -1)
 
         # goal
-        self.set_reward([HEIGHT-1, WIDTH-1], 1)
+        self.set_reward([HEIGHT-1, WIDTH-1], 10)
 
     def _build_canvas(self):
         canvas = tk.Canvas(self, bg='white',
@@ -53,11 +53,11 @@ class Env(tk.Tk):
 
     def load_images(self):
         rectangle = PhotoImage(
-            Image.open("img/rectangle.png").resize((30, 30)))
+            Image.open("img/rectangle.png").resize((40, 40)))
         triangle = PhotoImage(
-            Image.open("img/triangle.png").resize((30, 30)))
+            Image.open("img/triangle.png").resize((40, 40)))
         circle = PhotoImage(
-            Image.open("img/circle.png").resize((30, 30)))
+            Image.open("img/circle.png").resize((40, 40)))
 
         return rectangle, triangle, circle
 
@@ -68,11 +68,13 @@ class Env(tk.Tk):
 
         self.rewards.clear()
         self.goal.clear()
-        for i in range(1, HEIGHT-1):
+        
+        self.set_reward([np.random.randint(2, WIDTH), 0], -1)
+        for i in range(1, HEIGHT):
             self.set_reward([np.random.randint(WIDTH), i], -1)
 
         # goal
-        self.set_reward([HEIGHT-1, WIDTH-1], 1)
+        self.set_reward([HEIGHT-1, WIDTH-1], 10)
 
     def set_reward(self, state, reward):
         state = [int(state[0]), int(state[1])]
@@ -109,9 +111,11 @@ class Env(tk.Tk):
         for reward in self.rewards:
             if reward['state'] == state:
                 rewards += reward['reward']
-                if reward['reward'] == 1:
+                if reward['reward'] > 0:
                     check_list['if_goal'] = True
 
+        # subtract amount of 'energy' it took for each step
+        rewards -= 0.05 
         check_list['rewards'] = rewards
 
         return check_list
@@ -183,7 +187,7 @@ class Env(tk.Tk):
     def move_rewards(self):
         new_rewards = []
         for temp in self.rewards:
-            if temp['reward'] == 1:
+            if temp['reward'] > 0:
                 new_rewards.append(temp)
                 continue
             temp['coords'] = self.move_const(temp)
@@ -242,5 +246,5 @@ class Env(tk.Tk):
         return s_
 
     def render(self):
-        time.sleep(0.07)
+        #time.sleep(0.07)
         self.update()

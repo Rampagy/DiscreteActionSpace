@@ -5,14 +5,13 @@ import random
 import numpy as np
 from GridWorld import Env
 from collections import deque
-from keras.layers import Dense, Conv2D, Reshape
+from keras.layers import Dense, Conv2D, Reshape, MaxPooling2D
 from keras.optimizers import Adam
 from keras.models import Sequential
 
 
-EPISODES = 10000
+EPISODES = 5000
 TEST = False # to evaluate a model
-LOAD = False # to load an existing model
 
 
 # this is Double DQN Agent
@@ -22,18 +21,17 @@ class DoubleDQNAgent:
     def __init__(self, state_size, action_size):
         # if you want to see learning, then change to True
         self.render = False
-
+        self.load = False # load an existing model
+        self.save_loc = './GridWorld_DoubleDQN'
+        
         # get size of state and action
         self.state_size = state_size
         self.action_size = action_size
 
         # these is hyper parameters for the Double DQN
-        self.discount_factor = 0.9
-        self.learning_rate = 0.0001
-        if TEST:
-            self.epsilon = 0.0
-        else:
-            self.epsilon = 1.0
+        self.discount_factor = 0.99
+        self.learning_rate = 0.0002
+        self.epsilon = 1.0
         self.epsilon_decay = 0.99997
         self.epsilon_min = 0.01
         self.batch_size = 64
@@ -47,6 +45,9 @@ class DoubleDQNAgent:
         # copy the model to target model
         # --> initialize the target model so that the parameters of model & target model to be same
         self.update_target_model()
+        
+        if self.load:
+            self.load_model()
 
 
     # approximate Q function using Neural Network
@@ -59,12 +60,17 @@ class DoubleDQNAgent:
         model.add(Conv2D(filters=16, kernel_size=(2, 2), strides=(1, 1), activation='relu', padding='same', input_shape=self.state_size, kernel_initializer='glorot_uniform'))
 
         # input size: [batch_size, 10, 10, 16]
+        # output size: [batch_size, 5, 5, 16]
+        #model.add(MaxPooling2D(pool_size=(2, 2), strides=None, padding='same'))
+        
+        # input size: [batch_size, 10, 10, 16]
         # output size: [batch_size, 10, 10, 32]
         model.add(Conv2D(filters=32, kernel_size=(2, 2), strides=(1, 1), activation='relu', padding='same', kernel_initializer='glorot_uniform'))
 
         # input size: [batch_size, 10, 10, 32]
         # output size: batch_sizex10x10x32 = 3200xbatch_size
         model.add(Reshape(target_shape=(1, 3200)))
+        model.add(Dense(4095, activation='relu', kernel_initializer='glorot_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='glorot_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
@@ -133,23 +139,22 @@ class DoubleDQNAgent:
                        epochs=1, verbose=0)
 
     # load the saved model
-    def load_model(self, name):
-        self.model.load_weights(name)
+    def load_model(self):
+        self.model.load_weights(self.save_loc + '.h5')
 
     # save the model which is under training
-    def save_model(self, name):
-        self.model.save_weights(name)
+    def save_model(self):
+        self.model.save_weights(self.save_loc + '.h5')
 
 
 if __name__ == "__main__":
-
     # create environment
     env = Env()
     state = env.reset()
 
     # get size of state and action from environment
     state_size = (10, 10, 1)
-    action_size = 4 # 0 = up, 1 = down, 2 = right, 3 = left
+    action_size = env.action_size # 0 = up, 1 = down, 2 = right, 3 = left
 
     agent = DoubleDQNAgent(state_size, action_size)
 
@@ -161,9 +166,9 @@ if __name__ == "__main__":
         state = env.reset()
         state = np.reshape(state, (1, state_size[0], state_size[1], state_size[2]))
 
-        if LOAD:
-            agent.load_model("./GridWorld_DoubleDQN.h5")
-
+        if TEST:
+            agent.epsilon = 0
+            
         while not done:
             if agent.render:
                 env.render()
@@ -183,10 +188,12 @@ if __name__ == "__main__":
 
             if done:
                 env.reset()
-                # every episode update the target model to be same with model
-                agent.update_target_model()
+                
+                if not TEST:
+                    # every episode update the target model to be same with model
+                    agent.update_target_model()
 
-                if len(filtered_scores)!=0: # if list is not empty
+                if len(filtered_scores) != 0: # if list is not empty
                     filtered_scores.append(0.98*filtered_scores[-1] + 0.02*score)
                 else: # if list is empty
                     filtered_scores.append(score)
@@ -194,19 +201,22 @@ if __name__ == "__main__":
                 episodes.append(e)
                 pylab.gcf().clear()
                 pylab.plot(episodes, scores, 'b', episodes, filtered_scores, 'orange')
-                pylab.savefig("./GridWorld_DoubleDQN.png")
+                pylab.savefig(agent.save_loc + '.png')
                 print("episode: {:3}   score: {:8.6}   memory length: {:4}   epsilon {:.3}"
                             .format(e, float(score), len(agent.memory), agent.epsilon))
 
                 # if the mean of scores of last N episodes is bigger than X
                 # stop training
-                if np.mean(scores[-min(25, len(scores)):]) >= 0.93:
-                    agent.save_model("./GridWorld_DoubleDQN.h5")
+                if np.mean(scores[-min(25, len(scores)):]) > 8:
+                    if not TEST:
+                        agent.save_model()
                     time.sleep(1)   # Delays for 1 second
                     sys.exit()
 
         # save the model every N episodes
         if e % 100 == 0:
-            agent.save_model("./GridWorld_DoubleDQN.h5")
+            if not TEST:
+                agent.save_model()
 
-    agent.save_model("./GridWorld_DoubleDQN.h5")
+    if not TEST:
+        agent.save_model()
