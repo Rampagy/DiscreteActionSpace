@@ -14,6 +14,7 @@ class Env(tk.Tk):
         super(Env, self).__init__()
         self.action_space = ['u', 'd', 'l', 'r']
         self.action_size = len(self.action_space)
+        self.observation_size = (HEIGHT, WIDTH)
         self.title('Double Deep Q Network')
         self.geometry('{0}x{1}'.format(HEIGHT * UNIT, HEIGHT * UNIT))
         self.shapes = self.load_images()
@@ -26,7 +27,7 @@ class Env(tk.Tk):
             self.set_reward([np.random.randint(WIDTH), i], -1)
 
         # goal
-        self.set_reward([HEIGHT-1, WIDTH-1], 10)
+        self.set_reward([HEIGHT-1, WIDTH-1], 2)
 
     def _build_canvas(self):
         canvas = tk.Canvas(self, bg='white',
@@ -74,7 +75,7 @@ class Env(tk.Tk):
             self.set_reward([np.random.randint(WIDTH), i], -1)
 
         # goal
-        self.set_reward([HEIGHT-1, WIDTH-1], 10)
+        self.set_reward([HEIGHT-1, WIDTH-1], 2)
 
     def set_reward(self, state, reward):
         state = [int(state[0]), int(state[1])]
@@ -127,7 +128,7 @@ class Env(tk.Tk):
 
     def reset(self):
         self.update()
-        time.sleep(0.2)
+        #time.sleep(0.2)
         x, y = self.canvas.coords(self.rectangle)
         self.canvas.move(self.rectangle, UNIT / 2 - x, UNIT / 2 - y)
         # return observation

@@ -5,7 +5,7 @@ import random
 import numpy as np
 from GridWorld import Env
 from collections import deque
-from keras.layers import Dense, Conv2D, Reshape, MaxPooling2D
+from keras.layers import Dense, Conv2D, Reshape
 from keras.optimizers import Adam
 from keras.models import Sequential
 
@@ -30,7 +30,7 @@ class DoubleDQNAgent:
 
         # these is hyper parameters for the Double DQN
         self.discount_factor = 0.99
-        self.learning_rate = 0.0002
+        self.learning_rate = 0.0001
         self.epsilon = 1.0
         self.epsilon_decay = 0.99997
         self.epsilon_min = 0.01
@@ -70,7 +70,7 @@ class DoubleDQNAgent:
         # input size: [batch_size, 10, 10, 32]
         # output size: batch_sizex10x10x32 = 3200xbatch_size
         model.add(Reshape(target_shape=(1, 3200)))
-        model.add(Dense(4095, activation='relu', kernel_initializer='glorot_uniform'))
+        model.add(Dense(3000, activation='relu', kernel_initializer='glorot_uniform'))
         model.add(Dense(self.action_size, activation='linear', kernel_initializer='glorot_uniform'))
         model.summary()
         model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     state = env.reset()
 
     # get size of state and action from environment
-    state_size = (10, 10, 1)
+    state_size = (env.observation_size[0], env.observation_size[1], 1)
     action_size = env.action_size # 0 = up, 1 = down, 2 = right, 3 = left
 
     agent = DoubleDQNAgent(state_size, action_size)
@@ -203,15 +203,15 @@ if __name__ == "__main__":
                 pylab.plot(episodes, scores, 'b', episodes, filtered_scores, 'orange')
                 pylab.savefig(agent.save_loc + '.png')
                 print("episode: {:3}   score: {:8.6}   memory length: {:4}   epsilon {:.3}"
-                            .format(e, float(score), len(agent.memory), agent.epsilon))
+                            .format(e, float(score), len(agent.memory), float(agent.epsilon)))
 
                 # if the mean of scores of last N episodes is bigger than X
                 # stop training
-                if np.mean(scores[-min(25, len(scores)):]) > 8:
+                if np.mean(scores[-min(25, len(scores)):]) > 0.93:
                     if not TEST:
                         agent.save_model()
-                    time.sleep(1)   # Delays for 1 second
-                    sys.exit()
+                        time.sleep(1)   # Delays for 1 second
+                        sys.exit()
 
         # save the model every N episodes
         if e % 100 == 0:
