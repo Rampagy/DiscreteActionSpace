@@ -23,7 +23,7 @@ class DoubleDQNAgent:
         self.render = False
         self.load = False # load an existing model
         self.save_loc = './GridWorld_DoubleDQN'
-        
+
         # get size of state and action
         self.state_size = state_size
         self.action_size = action_size
@@ -45,7 +45,7 @@ class DoubleDQNAgent:
         # copy the model to target model
         # --> initialize the target model so that the parameters of model & target model to be same
         self.update_target_model()
-        
+
         if self.load:
             self.load_model()
 
@@ -62,7 +62,7 @@ class DoubleDQNAgent:
         # input size: [batch_size, 10, 10, 16]
         # output size: [batch_size, 5, 5, 16]
         #model.add(MaxPooling2D(pool_size=(2, 2), strides=None, padding='same'))
-        
+
         # input size: [batch_size, 10, 10, 16]
         # output size: [batch_size, 10, 10, 32]
         model.add(Conv2D(filters=32, kernel_size=(2, 2), strides=(1, 1), activation='relu', padding='same', kernel_initializer='glorot_uniform'))
@@ -168,11 +168,8 @@ if __name__ == "__main__":
 
         if TEST:
             agent.epsilon = 0
-            
-        while not done:
-            if agent.render:
-                env.render()
 
+        while not done:
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
             next_state, reward, done = env.step(action)
@@ -188,7 +185,7 @@ if __name__ == "__main__":
 
             if done:
                 env.reset()
-                
+
                 if not TEST:
                     # every episode update the target model to be same with model
                     agent.update_target_model()
