@@ -9,7 +9,7 @@ from keras.layers import Dense, Conv2D, Reshape
 from keras.optimizers import Adam
 from keras.models import Sequential
 
-EPISODES = 5000
+EPISODES = 20000
 TEST = False
 
 # A2C(Advantage Actor-Critic) agent for the Cartpole
@@ -27,8 +27,8 @@ class A2CAgent:
 
         # These are hyper parameters for the Policy Gradient
         self.discount_factor = 0.99
-        self.actor_lr  = 0.000000001
-        self.critic_lr = 0.000000005
+        self.actor_lr  = 0.000001
+        self.critic_lr = 0.000005
 
         # create model for policy network
         self.actor = self.build_actor()
@@ -87,7 +87,7 @@ class A2CAgent:
         critic.add(Dense(3000, activation='relu',
                     kernel_initializer='glorot_uniform'))
         critic.add(Dense(self.value_size, activation='linear',
-                    kernel_initializer='he_uniform'))
+                    kernel_initializer='glorot_uniform'))
         critic.summary()
         critic.compile(loss='mse', optimizer=Adam(lr=self.critic_lr))
         return critic
@@ -104,13 +104,22 @@ class A2CAgent:
 
         value = self.critic.predict(state)[0]
         next_value = self.critic.predict(next_state)[0]
+        advantage = 0
 
         if done:
-            advantages[0][action] = reward - value
+            advantage = reward - value
             target[0][0] = reward
         else:
-            advantages[0][action] = reward + self.discount_factor * (next_value) - value
+            advantage = reward + self.discount_factor * next_value - value
             target[0][0] = reward + self.discount_factor * next_value
+
+        if advantage < 0:
+            # reinforce all actions except the one it took
+            advantages += 1
+            advantages[0][action] = 0
+        else: # (advantage >= 0)
+            # only reinforce the action that it took
+            advantages[0][action] = 1
 
         advantages = np.reshape(advantages, (1, advantages.shape[0], advantages.shape[1]))
         target = np.reshape(target, (1, target.shape[0], target.shape[1]))
@@ -149,6 +158,12 @@ if __name__ == "__main__":
         state = env.reset()
         state = np.reshape(state, (1, state_size[0], state_size[1], state_size[2]))
 
+        # don't introduce the energy tax complexity right away
+        if np.mean(scores[-min(25, len(scores)):]) > 0:
+            env.energy_tax = False
+        else:
+            env.energy_tax = True
+        
         while not done:
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
@@ -174,7 +189,8 @@ if __name__ == "__main__":
                 pylab.gcf().clear()
                 pylab.plot(episodes, scores, 'b', episodes, filtered_scores, 'orange')
                 pylab.savefig(agent.save_loc + '.png')
-                print('episode: {:3}   score: {:8.6}'.format(e, float(score)))
+                print('episode: {:3}   score: {:8.6}   filtered score: {:8.6}'
+                        .format(e, float(score), float(np.mean(scores[-min(25, len(scores)):]))))
 
                 # if the mean of scores of last N episodes is bigger than X
                 # stop training
