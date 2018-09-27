@@ -9,7 +9,7 @@ from keras.layers import Dense, Conv2D, Reshape
 from keras.optimizers import Adam
 from keras.models import Sequential
 
-EPISODES = 20000
+EPISODES = 100000
 TEST = False
 
 # A2C(Advantage Actor-Critic) agent for the Cartpole
@@ -26,9 +26,9 @@ class A2CAgent:
         self.value_size = 1
 
         # These are hyper parameters for the Policy Gradient
-        self.discount_factor = 0.99
-        self.actor_lr  = 0.000001
-        self.critic_lr = 0.000005
+        self.discount_factor = 0.9
+        self.actor_lr  = 0.00001
+        self.critic_lr = 0.00003
 
         # create model for policy network
         self.actor = self.build_actor()
@@ -52,7 +52,7 @@ class A2CAgent:
         # output size: [batch_size, 10, 10, 32]
         actor.add(Conv2D(filters=32, kernel_size=(2, 2), strides=(1, 1),
                     activation='relu', padding='same',
-                    kernel_initializer='glorot_uniform'))
+                    kernel_initializer='he_uniform'))
 
         # input size: [batch_size, 10, 10, 32]
         # output size: batch_sizex10x10x32 = 3200xbatch_size
@@ -79,7 +79,7 @@ class A2CAgent:
         # output size: [batch_size, 10, 10, 32]
         critic.add(Conv2D(filters=32, kernel_size=(2, 2), strides=(1, 1),
                     activation='relu', padding='same',
-                    kernel_initializer='glorot_uniform'))
+                    kernel_initializer='he_uniform'))
 
         # input size: [batch_size, 10, 10, 32]
         # output size: batch_sizex10x10x32 = 3200xbatch_size
@@ -87,7 +87,7 @@ class A2CAgent:
         critic.add(Dense(3000, activation='relu',
                     kernel_initializer='glorot_uniform'))
         critic.add(Dense(self.value_size, activation='linear',
-                    kernel_initializer='glorot_uniform'))
+                    kernel_initializer='he_uniform'))
         critic.summary()
         critic.compile(loss='mse', optimizer=Adam(lr=self.critic_lr))
         return critic
@@ -100,26 +100,17 @@ class A2CAgent:
     # update policy network every episode
     def train_model(self, state, action, reward, next_state, done):
         target = np.zeros((1, self.value_size))
-        advantages = np.zeros((1, self.action_size))
+        advantages = np.zeros((1, action_size))
 
         value = self.critic.predict(state)[0]
         next_value = self.critic.predict(next_state)[0]
-        advantage = 0
 
         if done:
-            advantage = reward - value
+            advantages[0][action] = reward - value
             target[0][0] = reward
         else:
-            advantage = reward + self.discount_factor * next_value - value
+            advantages[0][action] = reward + self.discount_factor * next_value - value
             target[0][0] = reward + self.discount_factor * next_value
-
-        if advantage < 0:
-            # reinforce all actions except the one it took
-            advantages += 1
-            advantages[0][action] = 0
-        else: # (advantage >= 0)
-            # only reinforce the action that it took
-            advantages[0][action] = 1
 
         advantages = np.reshape(advantages, (1, advantages.shape[0], advantages.shape[1]))
         target = np.reshape(target, (1, target.shape[0], target.shape[1]))
@@ -141,6 +132,7 @@ class A2CAgent:
 if __name__ == "__main__":
     # create environment
     env = Env()
+    env.energy_tax = False
     state = env.reset()
 
     # get size of state and action from environment
@@ -158,12 +150,6 @@ if __name__ == "__main__":
         state = env.reset()
         state = np.reshape(state, (1, state_size[0], state_size[1], state_size[2]))
 
-        # don't introduce the energy tax complexity right away
-        if np.mean(scores[-min(25, len(scores)):]) > 0:
-            env.energy_tax = False
-        else:
-            env.energy_tax = True
-        
         while not done:
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
@@ -199,6 +185,11 @@ if __name__ == "__main__":
                         agent.save_model()
                         time.sleep(1)   # Delays for 1 second
                         sys.exit()
+
+                # don't introduce the energy tax complexity right away
+                if (np.mean(scores[-min(25, len(scores)):]) > 0) and \
+                        (env.energy_tax == False):
+                    env.energy_tax = True
 
         # save the model every N episodes
         if e % 100 == 0:
